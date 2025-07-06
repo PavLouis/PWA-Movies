@@ -1,0 +1,831 @@
+openapi: 3.0.0
+info:
+  title: RecMovies API
+  version: 1.0.0
+  description: API for managing RecMovies
+
+components:
+  schemas:
+    Movie:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: Movie unique identifier
+        title:
+          type: string
+          description: Movie title
+        releaseYear:
+          type: number
+          description: Year the movie was released
+        description:
+          type: string
+          description: Movie description
+        genre:
+          type: string
+          description: Movie genre
+        image:
+          type: object
+          properties:
+            fileId:
+              type: string
+            filename:
+              type: string
+            contentType:
+              type: string
+      required:
+        - title
+        - releaseYear
+        - description
+        - genre
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/auth/register:
+    post:
+      security: []
+      tags:
+        - Authentication
+      summary: Register new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        201:
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      username:
+                        type: string
+                      email:
+                        type: string
+        403:
+          description: User already exists
+        500:
+          description: Server error
+
+  /api/auth/login:
+    post:
+      security: []
+      tags:
+        - Authentication
+      summary: Login existing user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        200:
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      username:
+                        type: string
+                      email:
+                        type: string
+        400:
+          description: Invalid credentials
+        500:
+          description: Server error
+
+  /api/users/profile:
+    get:
+      tags:
+        - Profile
+      summary: Get user profile
+      responses:
+        200:
+          description: User profile data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _id:
+                    type: string
+                  username:
+                    type: string
+                  email:
+                    type: string
+        500:
+          description: Server error
+
+    put:
+      tags:
+        - Profile
+      security:
+        - bearerAuth: []
+      summary: Update user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                currentPassword:
+                  type: string
+                  format: password
+                newPassword:
+                  type: string
+                  format: password
+      responses:
+        200:
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      username:
+                        type: string
+                      email:
+                        type: string
+        400:
+          description: Validation error or duplicate email/username
+        404:
+          description: User not found
+        500:
+          description: Server error
+
+  /api/movies:
+    get:
+      security: []
+      summary: List all movies
+      tags:
+        - Movies
+      responses:
+        "200":
+          description: List of movies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  movies:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Movie"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+    post:
+      summary: Add new movie with image
+      tags:
+        - Movies
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                releaseYear:
+                  type: number
+                description:
+                  type: string
+                genre:
+                  type: string
+                image:
+                  type: string
+                  format: binary
+                voteAverage:
+                  type: number
+              required:
+                - title
+                - releaseYear
+                - description
+                - genre
+                - voteAverage
+                - image
+      responses:
+        "201":
+          description: Movie created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Movie"
+        "400":
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /api/movies/{id}/image:
+    get:
+      security: []
+      summary: Get movie image
+      tags:
+        - Movies
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Movie ID
+      responses:
+        "200":
+          description: Movie image
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Movie or image not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /api/movies/{id}:
+    get:
+      summary: Get a movie by ID
+      tags:
+        - Movies
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Movie ID
+      responses:
+        "200":
+          description: Movie found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  movie:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                      title:
+                        type: string
+                      releaseYear:
+                        type: string
+                      description:
+                        type: string
+                      genre:
+                        type: string
+                      voteAverage:
+                        type: string
+                      image:
+                        type: object
+                        properties:
+                          fileId:
+                            type: string
+                          filename:
+                            type: string
+                          contentType:
+                            type: string
+        "404":
+          description: Movie not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+            
+    delete:
+      summary: Delete movie and its image
+      tags:
+        - Movies
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Movie ID
+      responses:
+        "200":
+          description: Movie deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "404":
+          description: Movie not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /api/favourites:
+    get:
+      tags:
+        - Favourite
+      summary: Get user's favorite movies
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of favorite movies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+    post:
+      tags:
+        - Favourite
+      summary: Add movie to favourites
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                movieId:
+                  type: string
+              required:
+                - movieId
+      responses:
+        "201":
+          description: Movie added to favourites
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          description: Movie already in favourites
+        "404":
+          description: Movie not found
+        "500":
+          description: Server error
+
+  /api/favourites/count:
+    get:
+      tags:
+        - Favourite
+      summary: Get count of favorite movies
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Favorite movies count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+        "500":
+          description: Server error
+
+  /api/favourites/{movieId}:
+    delete:
+      tags:
+        - Favourite
+      summary: Remove movie from favourites
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: movieId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Favorite removed successfully
+        "404":
+          description: Favorite not found
+        "500":
+          description: Server error
+
+  /api/lists/all:
+    get:
+      security: []
+      tags:
+        - RecMovieList
+      summary: Get all public lists
+      responses:
+        "200":
+          description: List of public movie lists
+        "500":
+          description: Server error
+
+  /api/lists:
+    post:
+      tags:
+        - RecMovieList
+      summary: Create new list
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                isPublic:
+                  type: boolean
+              required:
+                - title
+                - description
+      responses:
+        "201":
+          description: List created successfully
+        "400":
+          description: Missing required fields
+        "500":
+          description: Server error
+
+  /api/lists/self:
+    get:
+      tags:
+        - RecMovieList
+      summary: Get current user's lists
+      responses:
+        "200":
+          description: User's movie lists
+        "500":
+          description: Server error
+
+  /api/lists/{id}:
+    get:
+      tags:
+        - RecMovieList
+      summary: Get specific list
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List details with movies
+        "400":
+          description: Invalid list ID
+        "403":
+          description: Access denied
+        "404":
+          description: List not found
+        "500":
+          description: Server error
+    put:
+      tags:
+        - RecMovieList
+      summary: Update list
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                isPublic:
+                  type: boolean
+      responses:
+        "200":
+          description: List updated successfully
+        "400":
+          description: Invalid list ID
+        "403":
+          description: Access denied
+        "404":
+          description: List not found
+        "500":
+          description: Server error
+    delete:
+      tags:
+        - RecMovieList
+      summary: Delete list
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: List deleted successfully
+        "400":
+          description: Invalid list ID
+        "403":
+          description: Access denied
+        "404":
+          description: List not found
+        "500":
+          description: Server error
+
+  /api/lists/{id}/movies:
+    post:
+      tags:
+        - RecMovieList
+      summary: Add movie to list
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                movieId:
+                  type: string
+              required:
+                - movieId
+      responses:
+        "201":
+          description: Movie added successfully
+        "400":
+          description: Invalid ID format or movie already in list
+        "403":
+          description: Access denied
+        "404":
+          description: List not found
+        "500":
+          description: Server error
+
+  /api/lists/{id}/movies/{movieId}:
+    delete:
+      tags:
+        - RecMovieList
+      summary: Remove movie from list
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Movie removed successfully
+        "400":
+          description: Invalid ID format
+        "403":
+          description: Access denied
+        "404":
+          description: List or movie not found
+        "500":
+          description: Server error
+
+  /api/like/{recMovieListId}:
+    post:
+      tags:
+        - LikeList
+      summary: Toggle like status for a movie list
+      parameters:
+        - in: path
+          name: recMovieListId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Like status toggled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  liked:
+                    type: boolean
+        "401":
+          description: Unauthorized
+        "404":
+          description: List not found
+        "500":
+          description: Server error
+      security:
+        - bearerAuth: []
+
+    get:
+      tags:
+        - LikeList
+      summary: Get like status for a movie list
+      parameters:
+        - in: path
+          name: recMovieListId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Like status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  liked:
+                    type: boolean
+        "401":
+          description: Unauthorized
+        "404":
+          description: List not found
+        "500":
+          description: Server error
+      security:
+        - bearerAuth: []
+
+  /api/like/{recMovieListId}/count:
+    get:
+      tags:
+        - LikeList
+      summary: Get like count for a movie list
+      parameters:
+        - in: path
+          name: recMovieListId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Like count retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+        "404":
+          description: List not found
+        "500":
+          description: Server error
+
+  /api/like/me/liked-lists:
+    get:
+      tags:
+        - LikeList
+      summary: Get user's liked lists
+      responses:
+        "200":
+          description: Liked lists retrieved successfully
+
+        "401":
+          description: Unauthorized
+        "500":
+          description: Server error
+      security:
+        - bearerAuth: []

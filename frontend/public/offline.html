@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline Movies</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #222;
+      color: #fff;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #444;
+      padding: 16px;
+    }
+    header a {
+      color: #fff;
+      text-decoration: none;
+      font-size: 16px;
+    }
+    header a:hover {
+      text-decoration: underline;
+    }
+    .movie-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+      padding: 16px;
+    }
+    .movie-card {
+      background: #333;
+      padding: 8px;
+      border-radius: 8px;
+      text-align: center;
+      position: relative;
+    }
+    .movie-card img {
+      max-width: 100%;
+      border-radius: 8px;
+    }
+    .favorite-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 20px;
+      color: gold;
+    }
+    .favorite-btn.favorited {
+      color: red;
+    }
+    .placeholder {
+      text-align: center;
+      margin-top: 50px;
+      color: #ccc;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Offline Movies</h1>
+    <a href="favorites">
+      Favorites
+    </a>
+  </header>
+  <div class="movie-list" id="movie-list">
+    <p class="placeholder">Loading cached movies...</p>
+  </div>
+
+  <script>
+    const FAVORITES_KEY = "favorites";
+
+    // Charger les films en cache
+    async function loadCachedMovies() {
+      if (!("caches" in window)) {
+        document.getElementById("movie-list").innerHTML = "<p>Cache not supported.</p>";
+        return;
+      }
+
+      try {
+        const cache = await caches.open("movie-data-cache");
+        const cachedResponse = await cache.match("/popular-movies");
+
+        if (!cachedResponse) {
+          document.getElementById("movie-list").innerHTML = "<p class='placeholder'>No cached movies available.</p>";
+          return;
+        }
+
+        const movies = await cachedResponse.json();
+
+        renderMovies(movies);
+      } catch (error) {
+        console.error("Error loading cached movies:", error);
+        document.getElementById("movie-list").innerHTML = "<p class='placeholder'>Failed to load cached movies.</p>";
+      }
+    }
+
+    // Rendre les films avec gestion des favoris
+    function renderMovies(movies) {
+      const movieList = document.getElementById("movie-list");
+      movieList.innerHTML = "";
+
+      const favorites = getFavorites();
+
+      movies.forEach((movie) => {
+        const isFavorited = favorites.some((fav) => fav.id === movie.id);
+
+        const movieCard = document.createElement("div");
+        movieCard.className = "movie-card";
+        movieCard.innerHTML = `
+          <button class="favorite-btn ${isFavorited ? "favorited" : ""}" data-id="${movie.id}">
+            ${isFavorited ? "♥" : "♡"}
+          </button>
+          <img src="https://image.tmdb.org/t/p/w500${movie.poster_path}" alt="${movie.title}" />
+          <p>${movie.title}</p>
+        `;
+        movieList.appendChild(movieCard);
+      });
+
+      attachFavoriteListeners();
+    }
+
+    // Attacher les événements de gestion des favoris
+    function attachFavoriteListeners() {
+      const buttons = document.querySelectorAll(".favorite-btn");
+      buttons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const movieId = button.dataset.id;
+          toggleFavorite(movieId, button);
+        });
+      });
+    }
+
+    // Ajouter ou retirer un film des favoris
+    function toggleFavorite(movieId, button) {
+      const favorites = getFavorites();
+      const movieIndex = favorites.findIndex((movie) => movie.id == movieId);
+
+      if (movieIndex >= 0) {
+        // Supprimer des favoris
+        favorites.splice(movieIndex, 1);
+        button.classList.remove("favorited");
+        button.textContent = "♡";
+      } else {
+        // Ajouter aux favoris
+        const movieTitle = button.nextElementSibling.alt;
+        favorites.push({ id: movieId, title: movieTitle });
+        button.classList.add("favorited");
+        button.textContent = "♥";
+      }
+
+      saveFavorites(favorites);
+    }
+
+    // Récupérer les favoris depuis localStorage
+    function getFavorites() {
+      return JSON.parse(localStorage.getItem(FAVORITES_KEY)) || [];
+    }
+
+    // Sauvegarder les favoris dans localStorage
+    function saveFavorites(favorites) {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    }
+
+    loadCachedMovies();
+  </script>
+</body>
+</html>
